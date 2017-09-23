@@ -30,7 +30,7 @@
                         exit();
                         break;
                     case 0://子进程
-//                        test();//执行任务 去了
+                        work();//执行任务 去了
                         debug('子进程执行完成');
                         exit();
                         break;
@@ -49,7 +49,6 @@
                                 $v = trim($v);
                                 if(!$v){
                                     $data[$k] = strval($pid);
-                                    var_dump('追加第'.$k.'条');
                                     break;
                                 }
                             }
@@ -63,8 +62,16 @@
                         }
                 }
             }
+            $task = new task();//启动任务
+            $task->init(APP_TASK);
             do {
                 echo '主进程循环' . PHP_EOL;
+                //*1.分发任务
+                $file = $task->find();
+                if($file){
+                    $id = ftok($file, 'h');
+                }
+                //*2.子进程维护
                 sleep($this->opt['interval']);
 
             } while ($this->opt['interval']);
