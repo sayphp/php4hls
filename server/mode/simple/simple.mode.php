@@ -31,44 +31,43 @@
                         break;
                     case 0://子进程
 //                        test();//执行任务 去了
-//                        echo '子进程执行完成'.PHP_EOL;
+                        debug('子进程执行完成');
                         exit();
                         break;
                     default://主进程
-                        echo '进程'.posix_getpid().PHP_EOL;
                         $id_key = $this->key();
                         $sem_id = sem_get($id_key);
                         if (sem_acquire($sem_id)) {
-                            echo '=============信号捕获=========='.PHP_EOL;
+                            debug('=============信号捕获==========');
                             //*打开共享内存
                             $shm_id = $this->shm();
                             $content = shmop_read($shm_id, 0, $this->size());
-                            var_dump($content);
+                            debug('pid:'.$pid);
                             $data = explode('|', $content);
-                            if (!$data[0]) $data[0] = 1;
+                            if (!$data[0]) $data[0] = posix_getpid();
                             foreach ($data as $k => $v){
-                                if (!$v){
-                                    $data[$k] = intval($pid);
+                                $v = trim($v);
+                                if(!$v){
+                                    $data[$k] = strval($pid);
+                                    var_dump('追加第'.$k.'条');
                                     break;
                                 }
                             }
                             shmop_write($shm_id, implode('|', $data), 0);
-                            var_dump($content);
-                            var_dump(shmop_read($shm_id, 0, $this->size()));
+                            debug(shmop_read($shm_id, 0, $this->size()));
                             shmop_close($shm_id);
                             sem_release($sem_id);
-//                            echo '=============信号释放=========='.PHP_EOL;
-                            if ($data[0]){
-                                do {
-                                    echo '主进程循环' . PHP_EOL;
-                                    sleep(2);
-                                } while ($this->opt['interval']);
-                            }
+                            debug('=============信号释放==========');
                         }else{
-                            echo '=============信号未捕获=========='.PHP_EOL;
+                            debug('=============信号未捕获==========');
                         }
                 }
             }
+            do {
+                echo '主进程循环' . PHP_EOL;
+                sleep($this->opt['interval']);
+
+            } while ($this->opt['interval']);
         }
 
         public function key(){
@@ -94,11 +93,12 @@
                         }
                     }
                     shmop_delete($shm_id);
+                    shmop_close($shm_id);
                 }
                 //*初始化覆盖数据
-                shmop_open($shm_key, "n", 0644, $this->size());
+                $shm_id = shmop_open($shm_key, "n", 0644, $this->size());
                 shmop_write($shm_id, $this->data(), 0);
-                var_dump(shmop_read($shm_id, 0, $this->size()));
+                debug(shmop_read($shm_id, 0, $this->size()));
                 //*关闭共享内存
                 shmop_close($shm_id);
                 //*关闭信号量
@@ -111,16 +111,9 @@
         public function shm(){
             $shm_key = $this->key();
             $shm_id = shmop_open($shm_key, "w", 0644, $this->size());
-//            var_dump(shmop_size($shm_id));
+//            debug(shmop_size($shm_id));
             if(!$shm_id) error(112);
             return $shm_id;
-        }
-
-        public function del(){
-            $shm_id = $this->shm();
-//            var_dump($shm_id);
-            shmop_delete($shm_id);
-            shmop_close($shm_id);
         }
 
         //程序大小
