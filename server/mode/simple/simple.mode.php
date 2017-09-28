@@ -64,21 +64,28 @@
             }
             $task = new task();//启动任务
             $task->init(APP_TASK);
+            $i = 0;
             do {
                 echo '主进程循环' . PHP_EOL;
                 //*1.分发任务
                 $file = $task->find();
                 if($file){
-                    $id = ftok($file, 'h');
+                    //*接收任务
+                    debug('接收任务:'.$file);
+                    //*分发任务
+                    $id = $i%APP_TASK;
+                    $id = $id?$id:5;
+                    //*投递任务
+                    $task->set($id);
+                    $i++;
                 }
                 //*2.子进程维护
                 sleep($this->opt['interval']);
-
             } while ($this->opt['interval']);
         }
 
         public function key(){
-            return ftok(__FILE__, 't');
+            return ftok(__FILE__, 'z');
         }
 
         //初始化

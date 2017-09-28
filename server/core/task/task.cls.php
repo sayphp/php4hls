@@ -7,7 +7,7 @@
      */
     class task{
 
-        public $pathname = '/php4hls/task';
+        public $pathname = __FILE__;
 
         public $num;
 
@@ -17,20 +17,20 @@
 
         //发布任务
         public function sub($file){
-            $pathname = $this->pathname.'0';
-            $id_key = ftok($pathname, 'm');
+            $id_key = ftok($this->pathname, chr(65));
             $sem_id = sem_get($id_key);
             if(sem_acquire($sem_id)){
                 $shm_id = shmop_open($id_key, "c", 0644, 1024*10);
-                $content = shmop_read($shm_id, 0, shmop_size($shm_id));
+                $content = trim(shmop_read($shm_id, 0, shmop_size($shm_id)));
                 if($content==''){
                     $data = [];
                 }else{
                     $data = explode('|', $content);
                 }
                 $data[] = $file;
-                $content = implode('|', $data);
-                shmop_write($shm_id, $content, 0);
+                $str = implode('|', $data);
+                $str = $this->str($str);
+                shmop_write($shm_id, $str, 0);
                 shmop_close($shm_id);
                 sem_release($sem_id);
             }
@@ -38,12 +38,11 @@
 
         //发现任务
         public function find(){
-            $pathname = $this->pathname.'0';
-            $id_key = ftok($pathname, 'm');
+            $id_key = ftok($this->pathname, chr(65));
             $sem_id = sem_get($id_key);
             if(sem_acquire($sem_id)){
-                $shm_id = shmop_open($id_key, "c", 0644, 1024*10);
-                $content = shmop_read($shm_id, 0, shmop_size($shm_id));
+                $shm_id = shmop_open($id_key, "c", 0644, 1024);
+                $content = trim(shmop_read($shm_id, 0, shmop_size($shm_id)));
                 if($content==''){
                     $data = [];
                 }else{
@@ -58,27 +57,48 @@
 
         //分配任务
         public function set($id=1){
-            $pathname = $this->pathname.'0';
-            $id_key = ftok($pathname, 'm');
+            $id_key = ftok($this->pathname, chr(65));
             $sem_id = sem_get($id_key);
             if(sem_acquire($sem_id)){
-                $shm_id = shmop_open($id_key, "c", 0644, 1024*10);
-                $content = shmop_read($shm_id, 0, shmop_size($shm_id));
+                $shm_id = shmop_open($id_key, "w", 0644, 1024 * 10);
+                $content = trim(shmop_read($shm_id, 0, shmop_size($shm_id)));
+                debug('总任务的内容'.$content);
                 if($content==''){
                     $data = [];
                 }else{
                     $data = explode('|', $content);
                 }
+                $t = isset($data[0])?$data[0]:false;
+                unset($data[0]);
+                $tmp = $data;
+//                debug($data);
+                $tmp = array_values($tmp);
+                debug('处理后内容'.implode('|',$tmp));
+                $str = implode('|', $tmp);
+                $str = $this->str($str);
+                debug('???'.$str);
+                $rs = shmop_write($shm_id, $str, 0);
+                debug('==='.shmop_read($shm_id, 0, shmop_size($shm_id)));
+                debug($rs);
                 shmop_close($shm_id);
                 sem_release($sem_id);
-                if(isset($data[0])){
-                    $pathname = $this->pathname.$id;
-                    $id_key = ftok($pathname, 'm');
+                if($t){
+                    $id_key = ftok($this->pathname, chr(65+$id));
                     $sem_id = sem_get($id_key);
                     if(sem_acquire($sem_id)) {
-                        $shm_id = shmop_open($id_key, "c", 0644, 1024 * 10);
-                        unset($data[0]);
-                        shmop_write($shm_id, implode('|', $data), 0);
+                        $shm_id = shmop_open($id_key, 'w', 0644, 1024 * 10);
+                        $content = trim(shmop_read($shm_id, 0, shmop_size($shm_id)));
+                        debug('分支'.$id.'的内容'.$content);
+                        if($content==''){
+                            $d = [];
+                        }else{
+                            $d = explode('|', $content);
+                        }
+
+                        $d[] = $t;
+                        $str = implode('|', $d);
+                        $str = $this->str($str);
+                        $rs = shmop_write($shm_id, $str, 0);
                         shmop_close($shm_id);
                         sem_release($sem_id);
                     }
@@ -93,12 +113,12 @@
 
         //接收任务
         public function get($id=0){
-            $pathname = $this->pathname.$id;
-            $id_key = ftok($pathname, 'm');
+            $id_key = ftok($this->pathname, chr(65+$id));
             $sem_id = sem_get($id_key);
             if(sem_acquire($sem_id)) {
                 $shm_id = shmop_open($id_key, "c", 0644, 1024 * 10);
-                $content = shmop_read($shm_id, 0, shmop_size($shm_id));
+
+                $content = trim(shmop_read($shm_id, 0, shmop_size($shm_id)));
                 if($content==''){
                     $data = [];
                 }else{
@@ -113,19 +133,20 @@
 
         //确认完成任务
         public function ack($id=0){
-            $pathname = $this->pathname.$id;
-            $id_key = ftok($pathname, 'm');
+            $id_key = ftok($this->pathname, chr(65+$id));
             $sem_id = sem_get($id_key);
             if(sem_acquire($sem_id)) {
                 $shm_id = shmop_open($id_key, "c", 0644, 1024 * 10);
-                $content = shmop_read($shm_id, 0, shmop_size($shm_id));
+                $content = trim(shmop_read($shm_id, 0, shmop_size($shm_id)));
                 if($content==''){
                     $data = [];
                 }else{
                     $data = explode('|', $content);
                     unset($data[0]);
                 }
-                shmop_write($shm_id, implode('|', $data), 0);
+                $str = implode('|', $data);
+                $str = $this->str($str);
+                shmop_write($shm_id, $str, 0);
                 shmop_close($shm_id);
                 sem_release($sem_id);
                 return true;
@@ -139,26 +160,45 @@
             foreach($ids as $id){
                 $sem_id = sem_get($id);
                 if(sem_acquire($sem_id)){
-                    $shm_id = shmop_open($id, "c", 0644, 1024*10);
-                    $content = shmop_read($shm_id, 0, shmop_size($shm_id));
+                    $shm_id = shmop_open($id, 'c', 0644, 1024 * 10);
+                    $content = trim(shmop_read($shm_id, 0, shmop_size($shm_id)));
                     if($content==''){
                         $data = [];
                     }else{
                         $data = explode('|', $content);
                     }
-                    shmop_write($shm_id, implode('|', $data), 0);
+                    $str = implode('|', $data);
+                    $str = $this->str($str);
+                    shmop_write($shm_id, $str, 0);
                     shmop_close($shm_id);
                     sem_release($sem_id);
                 }
             }
         }
 
+        //清除
+        public function clean(){
+            $ids = $this->keys();
+            foreach($ids as $id){
+                $shm_id = shmop_open($id, 'c', 0644, 1024 * 10);
+                var_dump($id);
+                shmop_delete($shm_id);
+                shmop_close($shm_id);
+            }
+        }
+
         //keys
         public function keys(){
             $ids = [];
+            $k = 65;
             for($i=0;$i<=$this->num;$i++){
-                $ids[$i] = ftok($this->pathname.$i, 'm');
+                $ids[$i] = ftok($this->pathname, chr(65+$i));
             }
             return $ids;
+        }
+
+        //format
+        public function str($str){
+           return str_pad($str, 1024*10, ' ', STR_PAD_RIGHT);
         }
     }
