@@ -42,7 +42,7 @@
                             //*打开共享内存
                             $shm_id = $this->shm();
                             $content = shmop_read($shm_id, 0, $this->size());
-                            debug('pid:'.$pid);
+                            debug('pid:'.$pid.'::'.$id_key);
                             $data = explode('|', $content);
                             if (!$data[0]) $data[0] = posix_getpid();
                             foreach ($data as $k => $v){
@@ -52,7 +52,9 @@
                                     break;
                                 }
                             }
-                            shmop_write($shm_id, implode('|', $data), 0);
+                            $str = implode('|', $data);
+                            $str = str_pad($str, $this->size(0), ' ', STR_PAD_RIGHT);
+                            shmop_write($shm_id, $str, 0);
                             debug(shmop_read($shm_id, 0, $this->size()));
                             shmop_close($shm_id);
                             sem_release($sem_id);
@@ -79,7 +81,18 @@
                     $task->set($id);
                     $i++;
                 }
+                $shm_id = $this->shm();
+                $content = trim(shmop_read($shm_id, 0, $this->size()));
+                debug($content);
+                shmop_close($shm_id);
+                $data = explode('|', $content);
                 //*2.子进程维护
+                foreach($data as $k => $pid){
+                    if(!$k) continue;
+                    pcntl_waitpid($pid, $status, WNOHANG);
+                    debug($pid.':'.$status);
+
+                }
                 sleep($this->opt['interval']);
             } while ($this->opt['interval']);
         }

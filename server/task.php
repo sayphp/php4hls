@@ -8,4 +8,4 @@
     $task = new task(APP_TASK);
     $file = '/var/www/php4hls/test/123.avi';
     $task->sub($file);
-//    $task->clean();
+    $task->clean();

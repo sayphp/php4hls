@@ -7,7 +7,7 @@
      */
     class hls{
 
-        protected $opt = [
+        public $opt = [
             'mode' => APP_MODE,//模式
             'work_num' => 1,//由于单一调度已经能够满足需求，这里硬编码为1
             'task_num' => APP_TASK,
